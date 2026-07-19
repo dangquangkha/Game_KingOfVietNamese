@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vua Tiếng Việt – Kinh Tế Chính Trị</title>
+  <meta name="description" content="Trò chơi thi đấu trực tuyến thời gian thực về Kinh tế chính trị – mô phỏng gameshow Vua Tiếng Việt." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<!-- ===== PARTICLES BACKGROUND ===== -->
+<div id="particles-bg" aria-hidden="true"></div>
+
+<!-- ===== TOAST NOTIFICATION ===== -->
+<div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+<!-- ===== CONFETTI CONTAINER ===== -->
+<div id="confetti-container" aria-hidden="true"></div>
+
+<!-- ============================================================
+     SCREEN 1: LOBBY
+     ============================================================ -->
+<section id="screen-lobby" class="screen active">
+  <div class="lobby-card">
+    <div class="logo-area">
+      <span class="logo-icon">👑</span>
+      <h1 class="game-title">Vua Tiếng Việt</h1>
+      <p class="game-subtitle">Kinh Tế Chính Trị Edition</p>
+    </div>
+
+    <form id="join-form" class="join-form" autocomplete="off">
+      <div class="form-group">
+        <label for="input-name">Tên của bạn</label>
+        <input id="input-name" type="text" placeholder="Ví dụ: Minh Khoa" maxlength="20" required />
+      </div>
+      <div class="form-group">
+        <label for="input-room">Mã phòng</label>
+        <input id="input-room" type="text" placeholder="Ví dụ: PHONG123" maxlength="10" required style="text-transform:uppercase;" />
+      </div>
+      <button type="submit" class="btn btn-primary" id="btn-join">
+        <span>🚀 Vào phòng</span>
+      </button>
+    </form>
+
+    <div id="lobby-waiting" class="lobby-waiting hidden">
+      <h2>🏠 Phòng: <span id="room-label"></span></h2>
+      <p class="waiting-text">Đang chờ người chơi...</p>
+      <ul id="players-list" class="players-list"></ul>
+      <button id="btn-start" class="btn btn-success">▶ Bắt đầu trò chơi</button>
+      <p class="hint-text">💡 Bạn có thể chơi một mình hoặc mời bạn bè vào cùng phòng.</p>
+    </div>
+
+    <!-- Bảng Vàng Kỷ Lục Mọi Thời Đại -->
+    <div class="high-scores-container">
+      <h3 class="high-scores-title">🏆 Bảng Vàng Kỷ Lục (Top 10)</h3>
+      <div id="lobby-high-scores" class="high-scores-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN 2: ROUND 1 - PHẢN XẠ
+     ============================================================ -->
+<section id="screen-round1" class="screen hidden">
+  <div class="game-header">
+    <div class="round-badge">🔥 Vòng 1 – Phản xạ</div>
+    <div class="timer-wrap">
+      <div id="timer1" class="timer">90</div>
+      <div id="timer1-bar" class="timer-bar"><div id="timer1-fill" class="timer-fill"></div></div>
+    </div>
+    <div class="mini-leaderboard" id="mini-lb-1"></div>
+  </div>
+
+  <div class="question-card" id="r1-question-card">
+    <div class="q-counter">Câu <span id="r1-q-num">1</span> / 14</div>
+    <p id="r1-question-text" class="question-text">Đang tải câu hỏi...</p>
+    <div class="answer-area">
+      <!-- Quyền trợ giúp V1 -->
+      <div class="lifeline-container" id="r1-lifelines">
+        <button id="btn-r1-peek" class="btn btn-lifeline pulsing-btn" type="button" title="Hé lộ chữ cái đầu và cuối">🔍 Hé lộ chữ</button>
+        <button id="btn-r1-scramble" class="btn btn-lifeline pulsing-btn" type="button" title="Đảo các chữ cái gợi ý">🧩 Đảo chữ</button>
+        <button id="btn-r1-5050" class="btn btn-lifeline pulsing-btn" type="button" title="Gợi ý chọn 1 trong 2 đáp án">⚖️ Chọn 1 trong 2</button>
+      </div>
+      <div id="r1-scramble-hint" class="scramble-hint hidden"></div>
+      <div id="r1-choices-area" class="choices-area hidden"></div>
+      <input id="r1-answer" type="text" placeholder="Nhập đáp án của bạn..." class="answer-input" autocomplete="off" />
+      <div class="r1-buttons">
+        <button id="btn-r1-submit" class="btn btn-primary">✅ Gửi</button>
+        <button id="btn-r1-skip" class="btn btn-ghost">⏭ Bỏ qua</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sabotage-deck-container" id="r1-sabotage-deck">
+    <h3>🎒 Đồ Nghề Quậy Phá (Combo x3):</h3>
+    <div class="sabotage-cards" id="r1-cards-list"></div>
+  </div>
+
+  <div id="r1-finished-msg" class="finished-msg hidden">
+    <div class="finish-icon">🎉</div>
+    <p>Bạn đã hoàn thành! Đang chờ người chơi khác...</p>
+    <div id="r1-score-display" class="score-display"></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN 3: ROUND 2 - XÂU CHUỖI
+     ============================================================ -->
+<section id="screen-round2" class="screen hidden">
+  <div class="game-header">
+    <div class="round-badge round-2-badge">🔗 Vòng 2 – Xâu chuỗi</div>
+    <div class="timer-wrap">
+      <div id="timer2" class="timer">30</div>
+      <div id="timer2-bar" class="timer-bar"><div id="timer2-fill" class="timer-fill"></div></div>
+    </div>
+    <div class="mini-leaderboard" id="mini-lb-2"></div>
+  </div>
+
+  <div class="question-card" id="r2-question-card">
+    <div class="q-counter">Câu <span id="r2-q-num">1</span> / 9</div>
+    <p class="instruction-text">Click chọn từng từ theo thứ tự đúng để hoàn thành câu:</p>
+
+    <!-- Khu vực từ đã chọn (hàng trên) -->
+    <div class="r2-selected-label">🧩 Câu bạn đang xếp:</div>
+    <div id="r2-selected-chips" class="r2-selected-chips"></div>
+
+    <!-- Kho từ gốc bị xáo trộn (hàng dưới) -->
+    <div class="r2-pool-label">📦 Kho từ:</div>
+    <div id="r2-word-chips" class="word-chips"></div>
+
+    <div id="r2-buzz-area" class="buzz-area">
+      <button id="btn-buzz" class="btn btn-buzz">🔔 BẤMM CHUÔNG!</button>
+      <p id="buzz-status" class="buzz-status"></p>
+    </div>
+
+    <div id="r2-answer-area" class="answer-area hidden">
+      <!-- 5 Quyền trợ giúp V2 -->
+      <div class="lifeline-container" id="r2-lifelines">
+        <button id="btn-r2-firstword"  class="btn btn-lifeline pulsing-btn" type="button" title="Tự động chọn từ đầu tiên">💡 Từ đầu</button>
+        <button id="btn-r2-lastword"   class="btn btn-lifeline pulsing-btn" type="button" title="Tự động chọn từ cuối cùng">💡 Từ cuối</button>
+        <button id="btn-r2-pair"       class="btn btn-lifeline pulsing-btn" type="button" title="Gợi ý một cặp từ liền kề">🔗 Cặp từ</button>
+        <button id="btn-r2-verify"     class="btn btn-lifeline pulsing-btn" type="button" title="Kiểm tra tiến độ xếp từ">✅ Kiểm tra</button>
+        <button id="btn-r2-skip"       class="btn btn-lifeline pulsing-btn" type="button" title="Đổi sang câu hỏi khác">🔄 Đổi câu</button>
+      </div>
+      <!-- Nút điều khiển -->
+      <div class="r2-controls">
+        <button id="btn-r2-reset" class="btn btn-ghost">🗑️ Xóa hết</button>
+        <button id="btn-r2-submit" class="btn btn-primary" disabled>✅ Gửi đáp án</button>
+      </div>
+    </div>
+
+    <div id="r2-result" class="r2-result hidden"></div>
+  </div>
+
+  <div class="sabotage-deck-container" id="r2-sabotage-deck">
+    <h3>🎒 Đồ Nghề Quậy Phá (Combo x2):</h3>
+    <div class="sabotage-cards" id="r2-cards-list"></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN 4: SPECIAL ROUND - SOÁN NGÔI
+     ============================================================ -->
+<section id="screen-special" class="screen hidden">
+  <div class="game-header">
+    <div class="round-badge round-special-badge">⭐ Vòng Đặc biệt – Soán Ngôi</div>
+    <div class="timer-wrap">
+      <div id="timer3" class="timer">15</div>
+      <div id="timer3-bar" class="timer-bar"><div id="timer3-fill" class="timer-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="question-card special-card">
+    <p class="instruction-text">Đoán từ khóa ẩn giấu từ gợi ý sau:</p>
+    <div id="special-clue" class="special-clue"></div>
+    <div id="special-crossword" class="crossword-grid"></div>
+    <div id="special-phase-badge" class="phase-badge">Giai đoạn 1 – Đúng nhận 100%</div>
+
+    <div id="special-answer-area" class="answer-area">
+      <!-- Quyền trợ giúp Vòng Đặc biệt -->
+      <div class="lifeline-container" id="special-lifelines">
+        <button id="btn-special-peek" class="btn btn-lifeline pulsing-btn" type="button" title="Tiết lộ 1 chữ cái ngẫu nhiên">🔍 Hé lộ 1 chữ</button>
+        <button id="btn-special-5050" class="btn btn-lifeline pulsing-btn" type="button" title="Chọn 1 trong 2 từ khóa">⚖️ Chọn 1 trong 2</button>
+      </div>
+      <div id="special-choices-area" class="choices-area hidden"></div>
+      <input id="special-answer" type="text" placeholder="Nhập từ khóa (không dấu cách)..." class="answer-input" style="text-transform:uppercase;" autocomplete="off" />
+      <button id="btn-special-submit" class="btn btn-primary">🔑 Xác nhận</button>
+    </div>
+    <div id="special-spectator-msg" class="spectator-msg hidden">
+      👀 Bạn đang ở chế độ quan sát – Hãy cổ vũ cho người chơi còn lại!
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN 5: GAME OVER - KẾT QUẢ
+     ============================================================ -->
+<section id="screen-gameover" class="screen hidden">
+  <div class="gameover-card">
+    <div class="trophy-icon">🏆</div>
+    <h1 class="gameover-title">Kết quả</h1>
+    <div id="new-record-badge" class="new-record-badge hidden">🎉 KỶ LỤC MỚI ĐÃ ĐƯỢC THI LẬP!</div>
+    <div id="final-leaderboard" class="final-leaderboard"></div>
+
+    <div class="high-scores-container gameover-hs">
+      <h3 class="high-scores-title">🌟 Bảng Vàng Kỷ Lục Mọi Thời Đại 🌟</h3>
+      <div id="gameover-high-scores" class="high-scores-list"></div>
+    </div>
+
+    <button id="btn-restart" class="btn btn-success">🔄 Chơi lại</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     ROUND TRANSITION OVERLAY
+     ============================================================ -->
+<div id="transition-overlay" class="transition-overlay hidden" aria-hidden="true">
+  <div class="transition-content">
+    <div id="transition-icon" class="transition-icon">🚀</div>
+    <div id="transition-text" class="transition-text">Chuẩn bị...</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SABOTAGE EFFECT OVERLAYS
+     ============================================================ -->
+<div id="freeze-overlay" class="freeze-overlay hidden" aria-hidden="true">
+  <div class="freeze-crystals"></div>
+  <div class="freeze-text">🥶 BẠN BỊ ĐÓNG BĂNG!<br><span>Không thể nhập liệu trong 5 giây</span></div>
+</div>
+
+<div id="chalk-dust-overlay" class="chalk-dust-overlay hidden" aria-hidden="true">
+  <canvas id="chalk-canvas"></canvas>
+  <div class="chalk-dust-text">💨 BỤI PHẤN CHE PHỦ!<br><span>Di chuột hoặc vuốt liên tục để lau bảng</span></div>
+</div>
+
+<!-- ============================================================
+     EMOTE INTERACTION PANEL
+     ============================================================ -->
+<div id="emote-panel" class="emote-panel hidden">
+  <div class="emote-panel-header">
+    <span>⚡ Trêu đối thủ <span id="emote-ammo">20/20</span></span>
+  </div>
+  <div class="emote-target-select">
+    <select id="emote-target-dropdown">
+      <option value="">-- Chọn đối thủ --</option>
+    </select>
+  </div>
+  <div class="emote-buttons">
+    <button class="btn-emote" onclick="triggerSendEmote('😂')">😂</button>
+    <button class="btn-emote" onclick="triggerSendEmote('🤡')">🤡</button>
+    <button class="btn-emote" onclick="triggerSendEmote('💩')">💩</button>
+    <button class="btn-emote" onclick="triggerSendEmote('👻')">👻</button>
+    <button class="btn-emote" onclick="triggerSendEmote('🤪')">🤪</button>
+  </div>
+  <div id="emote-cooldown-overlay" class="emote-cooldown-overlay hidden">
+    <span>⏳ Hồi chiêu: 30s</span>
+  </div>
+</div>
+
+<div id="emote-fly-zone" class="emote-fly-zone"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
