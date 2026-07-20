@@ -283,6 +283,49 @@ html, body {
 .round-2-badge { background: linear-gradient(135deg, var(--yellow-dark), #ff9f43); }
 .round-special-badge { background: linear-gradient(135deg, var(--purple), #ec4899); }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.btn-surrender {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1.5px solid var(--danger);
+  color: #f87171;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-surrender:hover {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.btn-leave {
+  background: rgba(148, 163, 184, 0.15);
+  border: 1.5px solid var(--border);
+  color: var(--text-light);
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-leave:hover {
+  background: var(--surface-light);
+  color: #fff;
+  border-color: #fff;
+}
+
 /* Timer */
 .timer-wrap {
   display: flex;

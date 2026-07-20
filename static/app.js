@@ -306,6 +306,7 @@ function handleServerMessage(msg) {
     case 'SPECIAL_RESULT': onSpecialResult(msg); break;
     case 'SPECIAL_TIMEOUT': onSpecialTimeout(msg); break;
     case 'GAME_OVER': onGameOver(msg); break;
+    case 'PLAYER_SURRENDERED': onPlayerSurrendered(msg); break;
     case 'SABOTAGE_CARD_RECEIVED': onSabotageCardReceived(msg); break;
     case 'SABOTAGE_TRIGGERED': onSabotageTriggered(msg); break;
     case 'SABOTAGE_EFFECT': onSabotageEffect(msg); break;
@@ -313,6 +314,52 @@ function handleServerMessage(msg) {
     case 'EMOTE_RECEIVED': onEmoteReceived(msg); break;
     case 'EMOTE_LOG': onEmoteLog(msg); break;
     default: console.log('Unknown msg:', msg);
+  }
+}
+
+function onPlayerSurrendered(msg) {
+  showToast(msg.message, 'warning', 4000);
+  if (msg.player_id === state.clientId) {
+    state.isSpectator = true;
+    disableAllInputs(true);
+  }
+  if (msg.leaderboard) {
+    if (state.gameState === 'ROUND_1') updateMiniLb('mini-lb-1', msg.leaderboard);
+    else if (state.gameState === 'ROUND_2') updateMiniLb('mini-lb-2', msg.leaderboard);
+  }
+}
+
+window.confirmSurrender = () => {
+  if (confirm("Bạn có chắc chắn muốn ĐẦU HÀNG ván đấu này không?")) {
+    send({ action: "SURRENDER" });
+    showToast("🏳️ Bạn đã xin đầu hàng!", "warning", 3000);
+  }
+};
+
+window.confirmLeaveRoom = () => {
+  if (confirm("Bạn có chắc chắn muốn THOÁT PHÒNG không?")) {
+    if (state.ws) {
+      send({ action: "LEAVE_ROOM" });
+      try { state.ws.close(); } catch(e) {}
+      state.ws = null;
+    }
+    showScreen('screen-lobby');
+    $('join-form').classList.remove('hidden');
+    $('lobby-waiting').classList.add('hidden');
+    state.gameState = 'LOBBY';
+    showToast("🚪 Đã rời khỏi phòng chơi.", "info", 2500);
+  }
+};
+
+async function loadLobbyHighScores() {
+  try {
+    const res = await fetch('/api/high-scores');
+    if (res.ok) {
+      const data = await res.json();
+      renderHighScores('lobby-high-scores', data);
+    }
+  } catch (e) {
+    console.error("Lỗi tải Bảng Vàng:", e);
   }
 }
 
@@ -343,8 +390,7 @@ function onGameStart(msg) {
   state.usedLifelines = [];
 
   // Reset các nút trợ giúp
-  enableLifelineButton("btn-r1-peek");
-  enableLifelineButton("btn-r1-scramble");
+  updateLifelineButtons();
   $('r1-scramble-hint').classList.add('hidden');
   $('r1-scramble-hint').textContent = '';
   renderSabotageDeck();
@@ -473,7 +519,7 @@ function renderRound2Question(msg) {
   if (msg.index === 1) {
     state.mySabotageCards = [];
     state.usedLifelines = [];
-    ['btn-r2-firstword','btn-r2-lastword','btn-r2-pair','btn-r2-verify','btn-r2-skip'].forEach(id => enableLifelineButton(id));
+    updateLifelineButtons();
   }
   renderSabotageDeck();
 
@@ -621,8 +667,7 @@ function renderSpecialQuestion(msg) {
   if (msg.index === 1) {
     state.mySabotageCards = [];
     state.usedLifelines = [];
-    enableLifelineButton("btn-special-peek");
-    enableLifelineButton("btn-special-5050");
+    updateLifelineButtons();
   }
 
   $('special-clue').textContent = msg.clue;
@@ -798,18 +843,60 @@ function onSabotageEffect(msg) {
   }
 }
 
+const LIFELINE_LIMITS = {
+  "50_50": 7,
+  "PEEK": 3,
+  "SCRAMBLE": 3,
+  "FIRST_WORD": 3,
+  "LAST_WORD": 3,
+  "REVEAL_PAIR": 3,
+  "VERIFY_PROGRESS": 3,
+  "SKIP_QUESTION": 3,
+  "PEEK_SPECIAL": 3,
+  "50_50_SPECIAL": 3
+};
+
+function getLifelineCount(type) {
+  return state.usedLifelines ? state.usedLifelines.filter(t => t === type).length : 0;
+}
+
+function updateLifelineButtons() {
+  const checkAndUpdate = (btnId, type, label, icon) => {
+    const btn = $(btnId);
+    if (!btn) return;
+    const maxUses = LIFELINE_LIMITS[type] || 3;
+    const count = getLifelineCount(type);
+    const remaining = Math.max(0, maxUses - count);
+    btn.innerHTML = `${icon} ${label} <span style="font-size:0.75em; opacity:0.85; margin-left:2px;">(${remaining}/${maxUses})</span>`;
+    btn.disabled = remaining <= 0;
+  };
+
+  checkAndUpdate("btn-r1-peek", "PEEK", "Hé lộ chữ", "🔍");
+  checkAndUpdate("btn-r1-scramble", "SCRAMBLE", "Đảo chữ", "🧩");
+  checkAndUpdate("btn-r1-5050", "50_50", "Chọn 1 trong 2", "⚖️");
+
+  checkAndUpdate("btn-r2-firstword", "FIRST_WORD", "Từ đầu", "💡");
+  checkAndUpdate("btn-r2-lastword", "LAST_WORD", "Từ cuối", "💡");
+  checkAndUpdate("btn-r2-pair", "REVEAL_PAIR", "Cặp từ", "🔗");
+  checkAndUpdate("btn-r2-verify", "VERIFY_PROGRESS", "Kiểm tra", "✅");
+  checkAndUpdate("btn-r2-skip", "SKIP_QUESTION", "Đổi câu", "🔄");
+
+  checkAndUpdate("btn-special-peek", "PEEK_SPECIAL", "Hé lộ 1 chữ", "🔍");
+  checkAndUpdate("btn-special-5050", "50_50_SPECIAL", "Chọn 1 trong 2", "⚖️");
+}
+
 function onLifelineResult(msg) {
   if (msg.lifeline === "PEEK") {
     $('r1-question-text').innerHTML = `${state.r1Questions[msg.question_index].question}<br><span style="color:var(--primary); font-family:monospace; font-size:1.3rem; letter-spacing:0.1em; display:block; margin-top:8px;">Gợi ý: ${msg.data}</span>`;
     state.usedLifelines.push("PEEK");
-    disableLifelineButton("btn-r1-peek");
+    updateLifelineButtons();
     AudioEngine.reveal();
   } else if (msg.lifeline === "SCRAMBLE") {
     const scrambleHint = $('r1-scramble-hint');
     scrambleHint.classList.remove('hidden');
     scrambleHint.innerHTML = `🔠 Ký tự đảo lộn: ` + msg.data.map(l => `<span style="display:inline-block; background:var(--primary-light); border:1.5px solid var(--primary); padding:2px 8px; border-radius:4px; margin:0 3px; font-weight:800; font-family:monospace;">${l}</span>`).join('');
     state.usedLifelines.push("SCRAMBLE");
-    disableLifelineButton("btn-r1-scramble");
+    updateLifelineButtons();
     AudioEngine.reveal();
   } else if (msg.lifeline === "50_50") {
     const area = $('r1-choices-area');
@@ -823,22 +910,20 @@ function onLifelineResult(msg) {
     $('btn-r1-submit').classList.add('hidden');
     
     state.usedLifelines.push("50_50");
-    disableLifelineButton("btn-r1-5050");
+    updateLifelineButtons();
     AudioEngine.reveal();
   } else if (msg.lifeline === "FIRST_WORD") {
-    // Auto-click the first word chip
     const firstWord = msg.data;
     const poolIdx = state.r2ShuffledWords.indexOf(firstWord);
     if (poolIdx !== -1 && !state.r2SelectedIndices.includes(poolIdx)) {
       state.r2SelectedIndices.unshift(poolIdx);
       renderR2Pool();
       renderR2Selected();
-      // Mark chip as locked (can't remove)
       const chipEls = $('r2-selected-chips').querySelectorAll('.word-chip-selected');
       if (chipEls[0]) chipEls[0].classList.add('locked');
     }
     state.usedLifelines.push("FIRST_WORD");
-    disableLifelineButton("btn-r2-firstword");
+    updateLifelineButtons();
     showToast(`💡 Từ đầu tiên: "${firstWord}"`, 'info', 2500);
     AudioEngine.reveal();
   } else if (msg.lifeline === "LAST_WORD") {
@@ -850,13 +935,13 @@ function onLifelineResult(msg) {
       renderR2Selected();
     }
     state.usedLifelines.push("LAST_WORD");
-    disableLifelineButton("btn-r2-lastword");
+    updateLifelineButtons();
     showToast(`💡 Từ cuối cùng: "${lastWord}"`, 'info', 2500);
     AudioEngine.reveal();
   } else if (msg.lifeline === "REVEAL_PAIR") {
     showToast(`🔗 Gợi ý cặp từ liền kề: "${msg.data[0]}" → "${msg.data[1]}"`, 'info', 5000);
     state.usedLifelines.push("REVEAL_PAIR");
-    disableLifelineButton("btn-r2-pair");
+    updateLifelineButtons();
     AudioEngine.reveal();
   } else if (msg.lifeline === "VERIFY_PROGRESS") {
     const chips = $('r2-selected-chips').querySelectorAll('.word-chip-selected');
@@ -867,12 +952,11 @@ function onLifelineResult(msg) {
       }
     });
     state.usedLifelines.push("VERIFY_PROGRESS");
-    disableLifelineButton("btn-r2-verify");
+    updateLifelineButtons();
     AudioEngine.reveal();
   } else if (msg.lifeline === "SKIP_QUESTION") {
-    // Server sends a new question – renderRound2Question will handle it
     state.usedLifelines.push("SKIP_QUESTION");
-    disableLifelineButton("btn-r2-skip");
+    updateLifelineButtons();
     showToast('🔄 Đã đổi sang câu hỏi mới!', 'success', 2000);
     AudioEngine.reveal();
   } else if (msg.lifeline === "PEEK_SPECIAL") {
@@ -882,7 +966,7 @@ function onLifelineResult(msg) {
       cell.className = 'crossword-cell revealed';
     }
     state.usedLifelines.push("PEEK_SPECIAL");
-    disableLifelineButton("btn-special-peek");
+    updateLifelineButtons();
     AudioEngine.reveal();
   } else if (msg.lifeline === "50_50_SPECIAL") {
     const area = $('special-choices-area');
@@ -896,13 +980,30 @@ function onLifelineResult(msg) {
     $('btn-special-submit').classList.add('hidden');
     
     state.usedLifelines.push("50_50_SPECIAL");
-    disableLifelineButton("btn-special-5050");
+    updateLifelineButtons();
     AudioEngine.reveal();
   }
 }
 
 function disableAllInputs(disabled) {
   $('r1-answer').disabled = disabled;
+  $('r2-answer').disabled = disabled;
+  $('special-answer').disabled = disabled;
+  $('btn-r1-submit').disabled = disabled;
+  $('btn-r2-submit').disabled = disabled;
+  $('btn-special-submit').disabled = disabled;
+  $('btn-r1-skip').disabled = disabled;
+}
+
+function disableLifelineButton(id) {
+  const el = $(id);
+  if (el) el.disabled = true;
+}
+
+function enableLifelineButton(id) {
+  const el = $(id);
+  if (el) el.disabled = false;
+}
   $('r2-answer').disabled = disabled;
   $('special-answer').disabled = disabled;
   $('btn-r1-submit').disabled = disabled;
@@ -1101,7 +1202,7 @@ $('btn-r1-skip').addEventListener('click', () => submitR1Answer(true));
 
 // --- Round 1 Lifelines ---
 $('btn-r1-peek').addEventListener('click', () => {
-  if (!state.usedLifelines.includes("PEEK")) {
+  if (getLifelineCount("PEEK") < (LIFELINE_LIMITS["PEEK"] || 3)) {
     send({
       action: "USE_LIFELINE",
       type: "PEEK",
@@ -1110,7 +1211,7 @@ $('btn-r1-peek').addEventListener('click', () => {
   }
 });
 $('btn-r1-scramble').addEventListener('click', () => {
-  if (!state.usedLifelines.includes("SCRAMBLE")) {
+  if (getLifelineCount("SCRAMBLE") < (LIFELINE_LIMITS["SCRAMBLE"] || 3)) {
     send({
       action: "USE_LIFELINE",
       type: "SCRAMBLE",
@@ -1119,7 +1220,7 @@ $('btn-r1-scramble').addEventListener('click', () => {
   }
 });
 $('btn-r1-5050').addEventListener('click', () => {
-  if (!state.usedLifelines.includes("50_50")) {
+  if (getLifelineCount("50_50") < (LIFELINE_LIMITS["50_50"] || 7)) {
     send({
       action: "USE_LIFELINE",
       type: "50_50",
@@ -1149,28 +1250,28 @@ $('btn-r2-reset').addEventListener('click', () => {
 
 // --- Round 2 Lifelines (5 new) ---
 $('btn-r2-firstword').addEventListener('click', () => {
-  if (state.isMyBuzz && !state.usedLifelines.includes("FIRST_WORD")) {
+  if (state.isMyBuzz && getLifelineCount("FIRST_WORD") < (LIFELINE_LIMITS["FIRST_WORD"] || 3)) {
     send({ action: "USE_LIFELINE", type: "FIRST_WORD" });
   }
 });
 $('btn-r2-lastword').addEventListener('click', () => {
-  if (state.isMyBuzz && !state.usedLifelines.includes("LAST_WORD")) {
+  if (state.isMyBuzz && getLifelineCount("LAST_WORD") < (LIFELINE_LIMITS["LAST_WORD"] || 3)) {
     send({ action: "USE_LIFELINE", type: "LAST_WORD" });
   }
 });
 $('btn-r2-pair').addEventListener('click', () => {
-  if (state.isMyBuzz && !state.usedLifelines.includes("REVEAL_PAIR")) {
+  if (state.isMyBuzz && getLifelineCount("REVEAL_PAIR") < (LIFELINE_LIMITS["REVEAL_PAIR"] || 3)) {
     send({ action: "USE_LIFELINE", type: "REVEAL_PAIR" });
   }
 });
 $('btn-r2-verify').addEventListener('click', () => {
-  if (state.isMyBuzz && !state.usedLifelines.includes("VERIFY_PROGRESS")) {
+  if (state.isMyBuzz && getLifelineCount("VERIFY_PROGRESS") < (LIFELINE_LIMITS["VERIFY_PROGRESS"] || 3)) {
     const current = state.r2SelectedIndices.map(i => state.r2ShuffledWords[i]);
     send({ action: "USE_LIFELINE", type: "VERIFY_PROGRESS", extra: { current_words: current } });
   }
 });
 $('btn-r2-skip').addEventListener('click', () => {
-  if (state.isMyBuzz && !state.usedLifelines.includes("SKIP_QUESTION")) {
+  if (state.isMyBuzz && getLifelineCount("SKIP_QUESTION") < (LIFELINE_LIMITS["SKIP_QUESTION"] || 3)) {
     send({ action: "USE_LIFELINE", type: "SKIP_QUESTION" });
   }
 });
@@ -1189,7 +1290,7 @@ $('special-answer').addEventListener('keydown', e => {
 
 // --- Special Round Lifeline ---
 $('btn-special-peek').addEventListener('click', () => {
-  if (!state.isSpectator && !state.usedLifelines.includes("PEEK_SPECIAL")) {
+  if (!state.isSpectator && getLifelineCount("PEEK_SPECIAL") < (LIFELINE_LIMITS["PEEK_SPECIAL"] || 3)) {
     send({
       action: "USE_LIFELINE",
       type: "PEEK_SPECIAL"
@@ -1197,7 +1298,7 @@ $('btn-special-peek').addEventListener('click', () => {
   }
 });
 $('btn-special-5050').addEventListener('click', () => {
-  if (!state.isSpectator && !state.usedLifelines.includes("50_50_SPECIAL")) {
+  if (!state.isSpectator && getLifelineCount("50_50_SPECIAL") < (LIFELINE_LIMITS["50_50_SPECIAL"] || 3)) {
     send({
       action: "USE_LIFELINE",
       type: "50_50_SPECIAL"
@@ -1222,11 +1323,15 @@ state.emoteCooldown = false;
 
 window.triggerSendEmote = (emote) => {
   if (state.emoteCooldown) return;
-  const targetId = $('emote-target-dropdown').value;
+  const dropdown = $('emote-target-dropdown');
+  const targetId = dropdown.value;
   if (!targetId) {
     showToast('⚠️ Vui lòng chọn đối thủ để trêu!', 'warning');
     return;
   }
+
+  const selectedOpt = dropdown.options[dropdown.selectedIndex];
+  const targetName = selectedOpt ? selectedOpt.text.replace(/^👤\s*/, '') : 'đối thủ';
 
   state.emoteAmmo--;
   $('emote-ammo').textContent = `${state.emoteAmmo}/20`;
@@ -1236,6 +1341,9 @@ window.triggerSendEmote = (emote) => {
     emote: emote,
     target_id: targetId
   });
+
+  // Hiển thị thông báo xác nhận gửi thành công cho đối phương
+  showToast(`🎉 Đã gửi biểu cảm ${emote} tới ${targetName}!`, 'success', 2200);
 
   if (state.emoteAmmo <= 0) {
     startEmoteCooldown();
@@ -1316,3 +1424,4 @@ window.submitSpecialChoice = (choice) => {
 // INIT
 // ============================================================
 showScreen('screen-lobby');
+loadLobbyHighScores();

@@ -276,11 +276,25 @@ def generate_peek(answer: str) -> str:
     return "".join(res)
 
 
+LIFELINE_LIMITS = {
+    "50_50": 7,
+    "PEEK": 3,
+    "SCRAMBLE": 3,
+    "FIRST_WORD": 3,
+    "LAST_WORD": 3,
+    "REVEAL_PAIR": 3,
+    "VERIFY_PROGRESS": 3,
+    "SKIP_QUESTION": 3,
+    "PEEK_SPECIAL": 3,
+    "50_50_SPECIAL": 3
+}
+
 async def handle_use_lifeline(room: RoomState, player: Player, lifeline_type: str, extra_data: Dict):
     if player.is_eliminated:
         return
-    if lifeline_type in player.used_lifelines:
-        return  # Đã sử dụng
+    max_uses = LIFELINE_LIMITS.get(lifeline_type, 3)
+    if player.used_lifelines.count(lifeline_type) >= max_uses:
+        return  # Đã sử dụng hết số lần tối đa cho phép
     
     if room.state == "ROUND_1":
         if lifeline_type == "PEEK":
@@ -840,7 +854,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
     await manager.broadcast_to_room(room, {
         "type": "LOBBY_UPDATE",
         "players": [{"name": p.name, "id": p.client_id} for p in room.players.values()],
-        "message": f"{name} đã vào phòng!"
+        "message": f"{name} đã vào phòng!",
+        "high_scores": load_high_scores()
     })
 
     try:
@@ -856,6 +871,38 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
             if action == "START_GAME":
                 if room.state == "LOBBY":
                     await handle_start_game(room)
+
+            elif action == "LEAVE_ROOM":
+                manager.disconnect(room_id, client_id)
+                if room_id in manager.rooms:
+                    remaining_room = manager.rooms[room_id]
+                    if not await check_and_handle_only_one_connected(remaining_room):
+                        await manager.broadcast_to_room(remaining_room, {
+                            "type": "LOBBY_UPDATE",
+                            "players": [{"name": p.name, "id": p.client_id} for p in remaining_room.players.values()],
+                            "message": f"{name} đã rời phòng.",
+                            "high_scores": load_high_scores()
+                        })
+                break
+
+            elif action == "SURRENDER":
+                if not player.is_eliminated:
+                    player.is_eliminated = True
+                    player.is_spectator = True
+                    await manager.broadcast_to_room(room, {
+                        "type": "PLAYER_SURRENDERED",
+                        "player_id": client_id,
+                        "player_name": player.name,
+                        "message": f"🏳️ {player.name} đã xin đầu hàng ván đấu này!",
+                        "leaderboard": room.get_leaderboard()
+                    })
+                    if room.state == "ROUND_2" and room.buzzer_locked_by == client_id:
+                        room.buzzer_locked_by = None
+                        await manager.broadcast_to_room(room, {
+                            "type": "BUZZ_RESET",
+                            "message": "Buzzer đã được mở lại do người chơi đầu hàng."
+                        })
+                    await check_and_handle_only_one_connected(room)
 
             # --- Vòng 1 ---
             elif action == "ROUND1_SCORE":
@@ -914,13 +961,20 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
                 await manager.broadcast_to_room(remaining_room, {
                     "type": "LOBBY_UPDATE",
                     "players": [{"name": p.name, "id": p.client_id} for p in remaining_room.players.values()],
-                    "message": f"{name} đã rời phòng."
+                    "message": f"{name} đã rời phòng.",
+                    "high_scores": load_high_scores()
                 })
 
 
 # =============================================================================
-# ROOT ENDPOINT
+# ROOT & API ENDPOINTS
 # =============================================================================
+
+@app.get("/api/high-scores")
+async def get_high_scores():
+    """Trả về Bảng Vàng Kỷ Lục Top 10."""
+    return load_high_scores()
+
 
 @app.get("/")
 async def root():

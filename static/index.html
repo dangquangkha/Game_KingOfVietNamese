@@ -49,7 +49,10 @@
       <h2>🏠 Phòng: <span id="room-label"></span></h2>
       <p class="waiting-text">Đang chờ người chơi...</p>
       <ul id="players-list" class="players-list"></ul>
-      <button id="btn-start" class="btn btn-success">▶ Bắt đầu trò chơi</button>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:15px; width:100%;">
+        <button id="btn-start" class="btn btn-success" style="flex:1;">▶ Bắt đầu trò chơi</button>
+        <button type="button" class="btn btn-leave" onclick="confirmLeaveRoom()" style="padding:12px 18px;">🚪 Thoát phòng</button>
+      </div>
       <p class="hint-text">💡 Bạn có thể chơi một mình hoặc mời bạn bè vào cùng phòng.</p>
     </div>
 
@@ -72,6 +75,10 @@
       <div id="timer1-bar" class="timer-bar"><div id="timer1-fill" class="timer-fill"></div></div>
     </div>
     <div class="mini-leaderboard" id="mini-lb-1"></div>
+    <div class="header-actions">
+      <button class="btn btn-surrender" type="button" onclick="confirmSurrender()" title="Đầu hàng ván đấu này">🏳️ Đầu hàng</button>
+      <button class="btn btn-leave" type="button" onclick="confirmLeaveRoom()" title="Thoát khỏi phòng chơi">🚪 Thoát phòng</button>
+    </div>
   </div>
 
   <div class="question-card" id="r1-question-card">
@@ -117,6 +124,10 @@
       <div id="timer2-bar" class="timer-bar"><div id="timer2-fill" class="timer-fill"></div></div>
     </div>
     <div class="mini-leaderboard" id="mini-lb-2"></div>
+    <div class="header-actions">
+      <button class="btn btn-surrender" type="button" onclick="confirmSurrender()" title="Đầu hàng ván đấu này">🏳️ Đầu hàng</button>
+      <button class="btn btn-leave" type="button" onclick="confirmLeaveRoom()" title="Thoát khỏi phòng chơi">🚪 Thoát phòng</button>
+    </div>
   </div>
 
   <div class="question-card" id="r2-question-card">
@@ -170,6 +181,10 @@
     <div class="timer-wrap">
       <div id="timer3" class="timer">15</div>
       <div id="timer3-bar" class="timer-bar"><div id="timer3-fill" class="timer-fill"></div></div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-surrender" type="button" onclick="confirmSurrender()" title="Đầu hàng ván đấu này">🏳️ Đầu hàng</button>
+      <button class="btn btn-leave" type="button" onclick="confirmLeaveRoom()" title="Thoát khỏi phòng chơi">🚪 Thoát phòng</button>
     </div>
   </div>
 
