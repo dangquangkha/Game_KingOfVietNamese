@@ -329,14 +329,15 @@ function onPlayerSurrendered(msg) {
   }
 }
 
-window.confirmSurrender = () => {
+function confirmSurrender() {
   if (confirm("Bạn có chắc chắn muốn ĐẦU HÀNG ván đấu này không?")) {
     send({ action: "SURRENDER" });
     showToast("🏳️ Bạn đã xin đầu hàng!", "warning", 3000);
   }
-};
+}
+window.confirmSurrender = confirmSurrender;
 
-window.confirmLeaveRoom = () => {
+function confirmLeaveRoom() {
   if (confirm("Bạn có chắc chắn muốn THOÁT PHÒNG không?")) {
     if (state.ws) {
       send({ action: "LEAVE_ROOM" });
@@ -349,7 +350,8 @@ window.confirmLeaveRoom = () => {
     state.gameState = 'LOBBY';
     showToast("🚪 Đã rời khỏi phòng chơi.", "info", 2500);
   }
-};
+}
+window.confirmLeaveRoom = confirmLeaveRoom;
 
 async function loadLobbyHighScores() {
   try {
