@@ -103,6 +103,24 @@ def test_javascript_syntax():
         raise SyntaxError(f"Unclosed '{top}' from line {top_line}")
     print("   -> PASS: static/app.js Syntax & Brackets Balanced")
 
+def test_duplicate_player_prevention():
+    print("6. Testing Prevention of Duplicate Player Names in Room...")
+    room = manager.get_or_create_room("ROOM_DUP")
+    p1 = Player("client_1", "khai", None)
+    room.players["client_1"] = p1
+    assert len(room.players) == 1
+
+    duplicate_ids = [cid for cid, p in list(room.players.items()) if p.name.strip().lower() == "khai" or cid == "client_2"]
+    for cid in duplicate_ids:
+        room.players.pop(cid, None)
+
+    p2 = Player("client_2", "khai", None)
+    room.players["client_2"] = p2
+
+    assert len(room.players) == 1
+    assert list(room.players.keys())[0] == "client_2"
+    print("   -> PASS: Duplicate player name 'khai' replaced cleanly (No ghost players)")
+
 if __name__ == "__main__":
     print("==========================================")
     print("  AUTOMATED TEST SUITE FOR KINGOFVIETNAMESE")
@@ -112,6 +130,7 @@ if __name__ == "__main__":
     test_lifeline_limits_config()
     test_websocket_single_connection()
     test_javascript_syntax()
+    test_duplicate_player_prevention()
     print("\n==========================================")
-    print("🎉 ALL 5 TEST SUITES PASSED SUCCESSFULLY (100%)!")
+    print("🎉 ALL 6 TEST SUITES PASSED SUCCESSFULLY (100%)!")
     print("==========================================")

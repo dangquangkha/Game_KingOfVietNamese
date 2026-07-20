@@ -188,6 +188,17 @@ class ConnectionManager:
     async def connect(self, room_id: str, client_id: str, name: str, websocket: WebSocket):
         await websocket.accept()
         room = self.get_or_create_room(room_id)
+
+        # Loại bỏ các kết nối cũ có cùng TÊN người chơi hoặc cùng client_id
+        duplicate_ids = [cid for cid, p in list(room.players.items()) if p.name.strip().lower() == name.strip().lower() or cid == client_id]
+        for cid in duplicate_ids:
+            old_player = room.players.pop(cid, None)
+            if old_player and old_player.websocket:
+                try:
+                    await old_player.websocket.close()
+                except Exception:
+                    pass
+
         player = Player(client_id=client_id, name=name, websocket=websocket)
         room.players[client_id] = player
         return room
@@ -902,7 +913,11 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
                             "type": "BUZZ_RESET",
                             "message": "Buzzer đã được mở lại do người chơi đầu hàng."
                         })
-                    await check_and_handle_only_one_connected(room)
+                    active = room.get_active_players()
+                    if len(active) <= 1:
+                        await handle_game_over(room)
+                    else:
+                        await check_and_handle_only_one_connected(room)
 
             # --- Vòng 1 ---
             elif action == "ROUND1_SCORE":
