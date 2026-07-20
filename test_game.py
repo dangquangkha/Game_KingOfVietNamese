@@ -77,6 +77,32 @@ def test_websocket_single_connection():
         assert "high_scores" in msg
     print("   -> PASS: WebSocket Connection & Handshake OK")
 
+def test_javascript_syntax():
+    print("5. Testing static/app.js Syntax & Bracket Balance...")
+    with open("static/app.js", "r", encoding="utf-8") as f:
+        code = f.read()
+    
+    # Simple stack check for braces/parentheses
+    stack = []
+    lines = code.split('\n')
+    for line_no, line in enumerate(lines, 1):
+        # Ignore comments
+        clean_line = line.split('//')[0]
+        for char in clean_line:
+            if char in '({[':
+                stack.append((char, line_no))
+            elif char in ')}]':
+                if not stack:
+                    raise SyntaxError(f"Unexpected closing '{char}' at line {line_no}")
+                top, top_line = stack.pop()
+                expected = {'(': ')', '{': '}', '[': ']'}[top]
+                if char != expected:
+                    raise SyntaxError(f"Mismatched bracket '{char}' at line {line_no}, expected '{expected}' for '{top}' from line {top_line}")
+    if stack:
+        top, top_line = stack.pop()
+        raise SyntaxError(f"Unclosed '{top}' from line {top_line}")
+    print("   -> PASS: static/app.js Syntax & Brackets Balanced")
+
 if __name__ == "__main__":
     print("==========================================")
     print("  AUTOMATED TEST SUITE FOR KINGOFVIETNAMESE")
@@ -85,6 +111,7 @@ if __name__ == "__main__":
     test_game_logic_unit()
     test_lifeline_limits_config()
     test_websocket_single_connection()
+    test_javascript_syntax()
     print("\n==========================================")
-    print("🎉 ALL 4 TEST SUITES PASSED SUCCESSFULLY (100%)!")
+    print("🎉 ALL 5 TEST SUITES PASSED SUCCESSFULLY (100%)!")
     print("==========================================")

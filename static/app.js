@@ -1006,23 +1006,6 @@ function enableLifelineButton(id) {
   const el = $(id);
   if (el) el.disabled = false;
 }
-  $('r2-answer').disabled = disabled;
-  $('special-answer').disabled = disabled;
-  $('btn-r1-submit').disabled = disabled;
-  $('btn-r2-submit').disabled = disabled;
-  $('btn-special-submit').disabled = disabled;
-  $('btn-r1-skip').disabled = disabled;
-}
-
-function disableLifelineButton(id) {
-  const el = $(id);
-  if (el) el.disabled = true;
-}
-
-function enableLifelineButton(id) {
-  const el = $(id);
-  if (el) el.disabled = false;
-}
 
 function adjustTimer(change) {
   if (state.gameState === 'ROUND_1' && state.r1TimerObj) {
